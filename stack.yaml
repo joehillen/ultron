@@ -6,10 +6,10 @@ resolver: lts-3.19
 # Local packages, usually specified by relative directory name
 packages:
 - '.'
+- 'slack-api'
 
 # Packages to be pulled from upstream that are not in the resolver (e.g., acme-missiles-0.3)
 extra-deps:
-- slack-api-0.6
 - hsini-0.4.2
 
 # Override default flag values for local packages and extra-deps

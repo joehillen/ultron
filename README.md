@@ -50,8 +50,6 @@ stack build
 
 * Responses are logged to stdout.
 * Some message types are not handled properly: [mpickering/slack-api#37](https://github.com/mpickering/slack-api/issues/37)
-* Only one process per channel can run at a time.
-* If a process runs forever, ultron must be restarted.
 
 # Wishlist (PRs Welcome)
 
