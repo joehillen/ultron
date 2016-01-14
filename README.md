@@ -2,6 +2,12 @@
 
 A Slack Bot for UNIX-style ChatOps
 
+Most ChatOps bots require that all plugins are written in their host language.
+
+*ultron* follows the UNIX Philosophy wherein every command is just a program.
+
+This allows commands to be written in any programming language.
+
 # Usage
 
     $ ultron --help
@@ -37,7 +43,7 @@ and the STDOUT and STDERR printed if they had any output.
 The following environment variables are passed to command programs:
 
 * `ULTRON_UID` -- the user id that called the command
-* `ULTRON_CID` -- the channel id were the command was written
+* `ULTRON_CID` -- the channel id where the command was called
 
 
 # Build
