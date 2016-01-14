@@ -32,8 +32,7 @@ See [example.cfg](example.cfg)
 Commands are just programs (The UNIX Philosophy)
 
 If the exit code of the command program is zero,
-STDOUT is written directly to slack unformatted
-with `@username` for the person who called the command.
+STDOUT is written directly to slack unformatted.
 Formatting is up to the command program. See [Slack Message Formatting](https://api.slack.com/docs/formatting).
 
 If the exit code of the command program is non-zero,

@@ -52,7 +52,7 @@ ultron cfg (Message cid (UserComment uid) msg _ _ _) =
       Nothing -> return ()
       Just (cmd, args) -> do
         resp <- liftIO $ runcmd cid uid (paths cfg) cmd args
-        sendMessage cid ("<@"<>uid ^. getId<>">\n"<>resp)
+        sendMessage cid resp
 ultron _ _ = return ()
 
 
@@ -112,7 +112,8 @@ runcmd cid uid paths' cmd args =
     return $ case ec of
                 ExitSuccess -> stdout
                 ExitFailure x ->
-                  "*ERROR:* `"<>cmd<>"` failed with exit code: "<>tshow x<>"\n"
+                  "<@"<>uid ^. getId<>">\n"
+                  <> "*ERROR:* `"<>cmd<>"` failed with exit code: "<>tshow x<>"\n"
                   <> if not $ T.null stdout
                        then "*stdout:*\n```\n"<>stdout<>"```\n"
                        else ""
