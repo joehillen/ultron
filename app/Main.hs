@@ -6,13 +6,15 @@ import           Control.Concurrent.Async (mapConcurrently)
 import           Control.Exception (handle, SomeException)
 import           Control.Lens hiding (argument)
 import           Control.Monad (void, unless, filterM)
-import           Control.Monad.Logger (runStdoutLoggingT)
+import           Control.Monad.Logger ( runStdoutLoggingT
+                                      , filterLogger
+                                      , LogLevel(LevelDebug))
 import           Data.Ini (lookupValue, Ini, readIniFile, sections)
 import           Data.List (nub)
+import           Data.Monoid ((<>))
 import           Data.Text (Text)
 import qualified Data.Text as T
 import           Data.Text.Lens (unpacked)
-import           Options.Applicative
 import           Slack.Bot
 import qualified System.Directory as D
 import           System.Exit (ExitCode(..))
@@ -20,18 +22,16 @@ import           System.FilePath ((</>))
 import           System.Process
 import           System.Process.Text as PT
 
+import           Options (options)
+
 
 main :: IO ()
 main = do
-  cfgfp <- execParser $
-    info (helper <*> argument str (metavar "CONFIG"))
-         (  fullDesc
-         <> header "ultron - A Slack Bot for UNIX-style ChatOps"
-         )
+  (debug, cfgfp) <- options
   cfgs <- readIniFile cfgfp >>= \case
             Left  err  -> error $ show err
             Right cfg  -> return $ map (readSection cfgfp cfg) $ sections cfg
-  void $ mapConcurrently runUltron cfgs
+  void $ mapConcurrently (runUltron debug) cfgs
 
 
 data UltronCfg = UltronCfg { prefix  :: Text
@@ -41,8 +41,12 @@ data UltronCfg = UltronCfg { prefix  :: Text
                            }
 
 
-runUltron :: UltronCfg -> IO ()
-runUltron cfg = runStdoutLoggingT $ runBot (token cfg) (ultron cfg)
+runUltron :: Bool -> UltronCfg -> IO ()
+runUltron debug cfg =
+  (if debug
+      then runStdoutLoggingT
+      else runStdoutLoggingT . filterLogger (\_ -> (/= LevelDebug)))
+  $ runBot (token cfg) (ultron cfg)
 
 
 ultron :: UltronCfg -> SlackBot
