@@ -30,7 +30,7 @@ main = do
   (debug, cfgfp) <- options
   cfgs <- readIniFile cfgfp >>= \case
             Left  err  -> error $ show err
-            Right cfg  -> return $ map (readSection cfgfp cfg) $ sections cfg
+            Right cfg  -> return $ map (readSection cfg) $ sections cfg
   void $ mapConcurrently (runUltron debug) cfgs
 
 
@@ -60,8 +60,8 @@ ultron cfg (Message cid (UserComment uid) msg _ _ _) =
 ultron _ _ = return ()
 
 
-readSection :: FilePath -> Ini -> Text -> UltronCfg
-readSection fp ini sectionName =
+readSection :: Ini -> Text -> UltronCfg
+readSection ini sectionName =
   UltronCfg { prefix  = opt "prefix"
             , channel = opt "channel"
             , token   = T.unpack $ opt "token"
@@ -70,8 +70,8 @@ readSection fp ini sectionName =
  where
   opt optName =
     case lookupValue sectionName optName ini of
-      Left err -> error $ "Error in section `" ++ T.unpack sectionName ++ "` "
-                          ++ "of `" ++ fp ++ "`: " ++ err
+      Left err -> error $ "Error in section `" ++ T.unpack sectionName ++ "`: "
+                          ++ err
       Right x -> x
 
 
