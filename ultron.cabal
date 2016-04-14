@@ -13,10 +13,15 @@ build-type:          Simple
 -- extra-source-files:
 cabal-version:       >=1.10
 
+source-repository head
+  type:     git
+  location: https://github.com/joehillen/ultron
+
 executable ultron
   hs-source-dirs:      app
   main-is:             Main.hs
   other-modules:       Options
+                     , Parse
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N -Wall -Werror
   build-depends:       base
                      , slack-bot-async
@@ -25,6 +30,7 @@ executable ultron
                      , filepath
                      , ini
                      , lens
+                     , megaparsec
                      , monad-logger
                      , optparse-applicative
                      , process
@@ -33,7 +39,18 @@ executable ultron
                      , transformers
   default-language:    Haskell2010
 
-
-source-repository head
-  type:     git
-  location: https://github.com/joehillen/ultron
+test-suite test
+  hs-source-dirs: test
+                , app
+  main-is: Spec.hs
+  other-modules:       ParseSpec
+                     , Parse
+  type: exitcode-stdio-1.0
+  ghc-options:   -threaded
+  build-depends: base
+               , hspec >= 1.3
+               , megaparsec
+               , text
+               , heredoc
+  ghc-options: -Wall -Werror
+  default-language:    Haskell2010

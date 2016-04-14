@@ -15,13 +15,15 @@ import           Data.Monoid ((<>))
 import           Data.Text (Text)
 import qualified Data.Text as T
 import           Data.Text.Lens (unpacked)
-import           Slack.Bot
 import qualified System.Directory as D
 import           System.Exit (ExitCode(..))
 import           System.FilePath ((</>))
-import           System.Process
+import           System.Process (proc, CreateProcess(..))
 import           System.Process.Text as PT
 
+import           Slack.Bot
+
+import           Parse
 import           Options (options)
 
 
@@ -52,11 +54,14 @@ runUltron debug cfg =
 ultron :: UltronCfg -> SlackBot
 ultron cfg (Message cid (UserComment uid) msg _ _ _) =
   unless (cid ^. getId /= channel cfg) $
-    case parsemsg (prefix cfg) msg of
-      Nothing -> return ()
-      Just (cmd, args) -> do
-        resp <- liftIO $ runcmd cid uid (paths cfg) cmd args
-        sendMessage cid resp
+    case dropPrefix (prefix cfg) msg of
+      Nothing   -> return ()
+      Just msg' ->
+        case parseCommand msg' of
+          Left _ -> return ()
+          Right (cmd, args) -> do
+            resp <- liftIO $ runCommand cid uid (paths cfg) cmd args
+            sendMessage cid resp
 ultron _ _ = return ()
 
 
@@ -75,18 +80,8 @@ readSection ini sectionName =
       Right x -> x
 
 
-parsemsg :: Text -> Text -> Maybe (Text, [Text])
-parsemsg pref msg =
-  let preflen = T.length pref in
-  if T.null msg || T.length msg < preflen || T.take preflen msg /= pref
-    then Nothing
-    else case T.words $ T.drop preflen msg of
-           [] -> Nothing
-           xs -> Just (head xs, tail xs)
-
-
-runcmd :: ChannelId -> UserId -> [FilePath] -> Text -> [Text] -> IO Text
-runcmd cid uid dps cmd args =
+runCommand :: ChannelId -> UserId -> [FilePath] -> Text -> [Text] -> IO Text
+runCommand cid uid dps cmd args =
   handle
     (\e -> return $ "*ERROR:* " <> tshow (e :: SomeException))
     (if cmd == "help" then do
