@@ -74,3 +74,6 @@ spec =
     it "accepts a double quoted escaped backslash and escaped double quote" $
       parseCommand [here|cmd "\\\""|]
         `shouldBe` Right ("cmd", [[here|\"|]])
+    it "does not interpret other escaped characters" $
+      parseCommand [here|cmd "hello\nworld"|]
+        `shouldBe` Right ("cmd", [[here|hello\nworld|]])
