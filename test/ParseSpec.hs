@@ -37,6 +37,12 @@ spec =
       parseCommand [here|cmd "foo bar"|] `shouldBe` Right ("cmd", ["foo bar"])
     it "accepts double quoted double quotes" $
       parseCommand [here|cmd " \" "|] `shouldBe` Right ("cmd", [[here| " |]])
+    it "accepts literal backslash" $
+      parseCommand [here|cmd \|] `shouldBe` Right ("cmd", ["\\"])
+    it "accepts escaped backslash in double quotes" $
+      parseCommand [here|cmd "\\"|] `shouldBe` Right ("cmd", ["\\"])
+    it "accepts escaped backslash in single quotes" $
+      parseCommand [here|cmd '\\'|] `shouldBe` Right ("cmd", ["\\"])
     it "accepts double quoted single quotes" $
       parseCommand [here|cmd "'" "'"|] `shouldBe` Right ("cmd", ["'", "'"])
     it "accepts single quotes" $
@@ -56,3 +62,15 @@ spec =
     it "accepts single quoted double quotes around escaped single quotes then around escaped double quotes" $
       parseCommand [here|cmd '" \'foo \"bar\"\' "'|]
         `shouldBe` Right ("cmd", [[here|" 'foo \"bar\"' "|]])
+    it "accepts double quoted string ending in an escaped backslash" $
+      parseCommand [here|cmd " foo bar\\"|]
+        `shouldBe` Right ("cmd", [[here| foo bar\|]])
+    it "accepts single quoted string ending in an escaped backslash" $
+      parseCommand [here|cmd ' foo bar\\'|]
+        `shouldBe` Right ("cmd", [[here| foo bar\|]])
+    it "accepts a single quoted escaped backslash and double quote" $
+      parseCommand [here|cmd '\\"'|]
+        `shouldBe` Right ("cmd", [[here|\"|]])
+    it "accepts a double quoted escaped backslash and escaped double quote" $
+      parseCommand [here|cmd "\\\""|]
+        `shouldBe` Right ("cmd", [[here|\"|]])

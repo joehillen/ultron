@@ -41,7 +41,7 @@ commandParser = do
 
 
 escaped :: Char -> Parser Char
-escaped q = char backslash *> char q
+escaped q = char backslash *> (char backslash <|> char q)
 
 
 quoted :: Char -> Parser String
