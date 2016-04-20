@@ -10,7 +10,7 @@ import           Control.Monad.Logger ( runStdoutLoggingT
                                       , filterLogger
                                       , LogLevel(LevelDebug))
 import           Data.Ini (lookupValue, Ini, readIniFile, sections)
-import           Data.List (nub)
+import           Data.List (nub, sort)
 import           Data.Monoid ((<>))
 import           Data.Text (Text)
 import qualified Data.Text as T
@@ -36,19 +36,20 @@ main = do
   void $ mapConcurrently (runUltron debug) cfgs
 
 
-data UltronCfg = UltronCfg { prefix  :: Text
-                           , channel :: Text
-                           , token   :: String
-                           , paths   :: [FilePath]
-                           }
+data UltronCfg = UltronCfg
+  { prefix  :: Text
+  , channel :: Text
+  , token   :: String
+  , paths   :: [FilePath]
+  }
 
 
 runUltron :: Bool -> UltronCfg -> IO ()
 runUltron debug cfg =
-  (if debug
-      then runStdoutLoggingT
-      else runStdoutLoggingT . filterLogger (\_ -> (/= LevelDebug)))
-  $ runBot (token cfg) (ultron cfg)
+  runStdoutLoggingT . debugFilter $ runBot (token cfg) (ultron cfg)
+ where
+  debugFilter | debug     = id
+              | otherwise = filterLogger (\_ -> (/= LevelDebug))
 
 
 ultron :: UltronCfg -> SlackBot
@@ -67,42 +68,40 @@ ultron _ _ = return ()
 
 readSection :: Ini -> Text -> UltronCfg
 readSection ini sectionName =
-  UltronCfg { prefix  = opt "prefix"
-            , channel = opt "channel"
-            , token   = T.unpack $ opt "token"
-            , paths   = map T.unpack . T.splitOn ":" $ opt "paths"
-            }
+  UltronCfg
+  { prefix  = opt "prefix"
+  , channel = opt "channel"
+  , token   = T.unpack $ opt "token"
+  , paths   = map T.unpack . T.splitOn ":" $ opt "paths"
+  }
  where
   opt optName =
     case lookupValue sectionName optName ini of
-      Left err -> error $ "Error in section `" ++ T.unpack sectionName ++ "`: "
-                          ++ err
-      Right x -> x
+      Left err -> error $ "Error in section `"++T.unpack sectionName++"`: "++err
+      Right x  -> x
 
 
 runCommand :: ChannelId -> UserId -> [FilePath] -> Text -> [Text] -> IO Text
-runCommand cid uid dps cmd args =
-  handle
-    (\e -> return $ "*ERROR:* " <> tshow (e :: SomeException))
-    (if cmd == "help" then do
-       bins <- listCommands dps
-       return $ T.intercalate "\n" (map T.pack bins)
-     else do
-       getBin dps cmd >>= \case
-         Nothing  -> return $ "*ERROR:* Unknown command: " <> cmd
-         Just bin -> runbin bin)
+runCommand cid uid dirpaths cmd args = handle handler go
  where
-  cmdErrorResp stdout stderr fc =
-    "<@" <> uid ^. getId <> ">\n"
-    <> "*ERROR:* `" <> cmd <> "` failed with exit code: " <> tshow fc <>"\n"
-    <> emptyIfNull "stdout" stdout
-    <> emptyIfNull "stderr" stderr
-  emptyIfNull _ "" = ""
-  emptyIfNull name s = (T.intercalate "\n" [ "*" <> name <> ":*"
-                                           , "```"
-                                           , s
-                                           , "```"
-                                           ]) <> "\n"
+  handler :: SomeException -> IO Text
+  handler e = return $ "*ERROR:* "<>tshow e
+  go | cmd == "help" = help dirpaths
+     | otherwise     =
+         getBin dirpaths cmd >>= \case
+           Nothing  -> return $ "*ERROR:* Unknown command: " <> cmd
+           Just bin -> runbin bin
+  cmdErrorResponse stdout stderr errNum =
+    "<@"<>uid ^. getId<>">\n"
+    <>"*ERROR:* `"<>cmd<>"` failed with exit code: "<>tshow errNum<>"\n"
+    <>emptyIfNull "stdout" stdout
+    <>emptyIfNull "stderr" stderr
+  emptyIfNull _    "" = ""
+  emptyIfNull name s  = (T.intercalate "\n" [ "*" <> name <> ":*"
+                                            , "```"
+                                            , s
+                                            , "```"
+                                            ]) <> "\n"
   mkProc bin = (proc bin (map T.unpack args))
                { env = Just [ ("ULTRON_CID", (cid ^. getId . unpacked))
                             , ("ULTRON_UID", (uid ^. getId . unpacked))
@@ -112,15 +111,19 @@ runCommand cid uid dps cmd args =
   runbin bin = do
     (ec, stdout, stderr) <- PT.readCreateProcessWithExitCode (mkProc bin) ""
     return $ case ec of
-                ExitSuccess    -> stdout
-                ExitFailure fc -> cmdErrorResp stdout stderr fc
+               ExitSuccess        -> stdout
+               ExitFailure errNum -> cmdErrorResponse stdout stderr errNum
+
+
+help :: [FilePath] -> IO Text
+help dirpaths = T.intercalate "\n" . map T.pack <$> listCommands dirpaths
 
 
 listCommands :: [FilePath] -> IO [String]
 listCommands dps = do
   existingDirs <- filterM D.doesDirectoryExist dps
   allbins <- concat <$> mapM executables existingDirs
-  return $ nub allbins
+  return . sort $ nub allbins
 
 
 executables :: FilePath -> IO [String]
