@@ -59,7 +59,7 @@ ultron cfg (Message cid (UserComment uid) msg _ _ _) =
       Nothing   -> return ()
       Just msg' ->
         case parseCommand msg' of
-          Left _ -> return ()
+          Left  _           -> return ()
           Right (cmd, args) -> do
             resp <- liftIO $ runCommand cid uid (paths cfg) cmd args
             sendMessage cid resp

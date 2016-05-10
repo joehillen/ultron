@@ -1,0 +1,2 @@
+#!/bin/sh
+echo $ULTRON_UID
